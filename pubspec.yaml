@@ -37,7 +37,9 @@ dependencies:
   qr_flutter: ^4.1.0
   google_fonts: ^6.2.1
   flutter_launcher_icons: ^0.13.1
-
+  qr_code_scanner: ^1.0.1
+  provider: ^6.1.4
+path: ./plugins/qr_code_scanner
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
@@ -67,6 +69,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/qr-scanner-qr-code-generator-65.png
+    - assets/images/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

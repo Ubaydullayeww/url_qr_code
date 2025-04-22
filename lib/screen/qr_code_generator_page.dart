@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_qr_code/service/global_provider/inherted.dart';
+import 'package:url_qr_code/screen/scaner.dart';
+import '../service/provider/provider.dart';
 
 class QrCodeGeneratorPage extends StatelessWidget {
   QrCodeGeneratorPage({super.key});
@@ -13,14 +15,14 @@ class QrCodeGeneratorPage extends StatelessWidget {
   ];
 
   final colors = ['Blue', 'Red', 'Green', 'Purple'];
-  final logos = ['None', 'Flutter', 'Custom'];
+  final logos = ['BMW', 'Flutter', 'Merc'];
   final formats = ['PNG', 'JPG', 'SVG'];
 
   final TextEditingController urlController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
-    final provider = QRProvider.of(context);
+    final provider = Provider.of<QRDataProvider>(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A043C),
@@ -33,20 +35,65 @@ class QrCodeGeneratorPage extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // App bar with scan button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'QR Generator',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.camera_alt, color: Colors.white),
+                        onPressed: () async {
+                          final scannedData = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const QrScannerPage(),
+                            ),
+                          );
+                          if (scannedData != null) {
+                            urlController.text = scannedData;
+                            provider.updateQrData(scannedData);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
                   // QR Code
                   Center(
-                    child:
-                        provider.qrData.isEmpty
-                            ? const Text(
-                              'QR hali mavjud emas',
-                              style: TextStyle(color: Colors.white),
-                            )
-                            : QrImageView(
-                              data: provider.qrData,
-                              version: QrVersions.auto,
-                              size: 200,
-                              backgroundColor: Colors.white,
-                            ),
+                    child: provider.qrData.isEmpty
+                        ? const Text(
+                      'QR hali mavjud emas',
+                      style: TextStyle(color: Colors.white),
+                    )
+                        : QrImageView(
+                      data: provider.qrData,
+                      version: QrVersions.auto,
+                      size: 200,
+                      backgroundColor: Colors.white,
+                      foregroundColor: provider.getColorFromName(
+                        provider.selectedColor,
+                      ),
+                      embeddedImage: provider.selectedLogo == 'BMW'
+                          ? const NetworkImage(
+                          'https://www.citypng.com/public/uploads/preview/bmw-car-logo-735811696610457s9siw7ivja.png')
+                          : provider.selectedLogo == 'Merc'
+                          ? const NetworkImage(
+                          'https://st3.depositphotos.com/1012627/13762/i/450/depositphotos_137626418-stock-photo-mercedes-benz-sign.jpg')
+                          : provider.selectedLogo == 'Flutter'
+                          ? const AssetImage('assets/flutter_logo.png')
+                          : null,
+                      embeddedImageStyle: QrEmbeddedImageStyle(
+                        size: const Size(40, 40),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 30),
 
@@ -61,16 +108,14 @@ class QrCodeGeneratorPage extends StatelessWidget {
                           duration: const Duration(milliseconds: 300),
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color:
-                                provider.selectedPattern == index
-                                    ? Colors.white.withOpacity(0.2)
-                                    : Colors.white.withOpacity(0.05),
+                            color: provider.selectedPattern == index
+                                ? Colors.white.withOpacity(0.2)
+                                : Colors.white.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color:
-                                  provider.selectedPattern == index
-                                      ? Colors.white
-                                      : Colors.transparent,
+                              color: provider.selectedPattern == index
+                                  ? Colors.white
+                                  : Colors.transparent,
                               width: 1.5,
                             ),
                           ),
@@ -85,9 +130,8 @@ class QrCodeGeneratorPage extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 24),
-                  _buildDropdown("COLOR", colors, provider.selectedColor, (
-                    value,
-                  ) {
+                  _buildDropdown(
+                      "COLOR", colors, provider.selectedColor, (value) {
                     provider.selectColor(value!);
                   }),
 
@@ -112,57 +156,39 @@ class QrCodeGeneratorPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
+                    onChanged: (value) {
+                      provider.updateQrData(value.trim());
+                    },
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      provider.updateQrData(urlController.text.trim());
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF0A043C),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Generate QR'),
-                  ),
 
                   const Spacer(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children:
-                        formats.map((format) {
-                          final isSelected = provider.selectedFormat == format;
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4.0,
+                    children: formats.map((format) {
+                      final isSelected = provider.selectedFormat == format;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: ElevatedButton(
+                            onPressed: () => provider.selectFormat(format),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isSelected
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.05),
+                              foregroundColor: isSelected
+                                  ? const Color(0xFF0A043C)
+                                  : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              child: ElevatedButton(
-                                onPressed: () => provider.selectFormat(format),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      isSelected
-                                          ? Colors.white
-                                          : Colors.white.withOpacity(0.05),
-                                  foregroundColor:
-                                      isSelected
-                                          ? const Color(0xFF0A043C)
-                                          : Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                ),
-                                child: Text(format),
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
-                          );
-                        }).toList(),
+                            child: Text(format),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
               );
@@ -186,11 +212,14 @@ class QrCodeGeneratorPage extends StatelessWidget {
   }
 
   Widget _buildDropdown(
-    String label,
-    List<String> items,
-    String selectedValue,
-    Function(String?) onChanged,
-  ) {
+      String label,
+      List<String> items,
+      String selectedValue,
+      Function(String?) onChanged,
+      ) {
+    // Ensure the selected value is in the items list
+    final validValue = items.contains(selectedValue) ? selectedValue : (items.isNotEmpty ? items[0] : null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -205,19 +234,18 @@ class QrCodeGeneratorPage extends StatelessWidget {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               dropdownColor: const Color(0xFF1B1B3A),
-              value: selectedValue,
+              value: validValue,
               isExpanded: true,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-              items:
-                  items.map((item) {
-                    return DropdownMenuItem(
-                      value: item,
-                      child: Text(
-                        item,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }).toList(),
+              items: items.map((item) {
+                return DropdownMenuItem(
+                  value: item,
+                  child: Text(
+                    item,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                );
+              }).toList(),
               onChanged: onChanged,
             ),
           ),
